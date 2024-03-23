@@ -4,8 +4,7 @@ import tkinter as tk
 from tkinter import scrolledtext
 from tkinter import messagebox
 import re
-import random
-from datetime import datetime  # Added for timestamp
+from datetime import datetime
 
 HOST = '127.0.0.1'
 PORT = 1234
@@ -20,10 +19,8 @@ FONT = ("Helvetica", 12, "bold")
 BUTTON_FONT = ("Helvetica", 10, "bold")
 SMALL_FONT = ("Helvetica", 9)
 
-# Creating a socket object
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-# Set to store previously saved messages
 saved_messages = set()
 
 def add_message(message):
@@ -47,6 +44,7 @@ def connect():
         threading.Thread(target=listen_for_messages_from_server, args=(client, )).start()
         username_textbox.config(state=tk.DISABLED)
         username_button.config(state=tk.DISABLED)
+        exit_button.config(state=tk.NORMAL)  # Enable exit button after connection
     else:
         messagebox.showerror("Invalid username", "Username format should be 3 alphabets, one '-', and two numbers")
 
@@ -58,12 +56,13 @@ def send_message():
     else:
         messagebox.showerror("Empty message", "Message cannot be empty")
 
+def exit_chat():
+    client.close()  # Close the socket connection
+    root.destroy()  # Close the tkinter GUI
+
 root = tk.Tk()
 root.geometry("600x600")
 root.title("Group Messenger")
-
-# Add icon to the taskbard
-root.iconbitmap('logo1.ico')
 
 client_label = tk.Label(root, text="Messenger Client", font=FONT, bg=BLACK, fg=BLACK)
 client_label.grid(row=0, column=0, sticky="w", padx=(70, 0))
@@ -99,20 +98,14 @@ message_textbox.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
 message_button = tk.Button(bottom_frame, text="Send", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE, command=send_message)
 message_button.pack(side=tk.LEFT, padx=10)
 
+exit_button = tk.Button(bottom_frame, text="Exit", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE, command=exit_chat)
+exit_button.pack(side=tk.LEFT, padx=10)
+exit_button.config(state=tk.DISABLED)  # Initially disable exit button
+
 message_box = scrolledtext.ScrolledText(middle_frame, font=SMALL_FONT, bg=MEDIUM_GREY, fg=BLACK)
 message_box.config(state=tk.DISABLED)
 message_box.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-'''
-def listen_for_messages_from_server(client):
-    while True:
-        message = client.recv(2048).decode('utf-8')
-        if message != '':
-            username = message.split("~")[0]
-            content = message.split('~')[1]
-            add_message(f"[{username}] {content}")
-        else:
-            messagebox.showerror("Error", "Message received from client is empty")
-'''
+
 def listen_for_messages_from_server(client):
     while True:
         message = client.recv(2048).decode('utf-8')
@@ -130,4 +123,3 @@ def main():
     
 if __name__ == '__main__':
     main()
-
