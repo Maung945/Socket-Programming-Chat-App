@@ -1,5 +1,7 @@
 from datetime import datetime
 
+#subject to change...
+
 class TextPayload:
     """A class to determine the format of text messages for the purpose of server features..."""
     def __init__(self, timestamp, username, content):
