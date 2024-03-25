@@ -4,7 +4,7 @@ import re
 from ui import ChatUI  
 
 HOST = '127.0.0.1'
-PORT = 1234
+PORT = 12346
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -20,7 +20,7 @@ def connect():
         try:
             client.connect((HOST, PORT))
             print("Successfully connected to server")
-            add_message("[SERVER] Successfully connected to the server")
+            add_message("Successfully connected to the server")
         except Exception as e:
             chat_ui.show_error("Unable to connect to server", f"Unable to connect to server {HOST} {PORT}: {e}")
             return
@@ -33,6 +33,7 @@ def connect():
 
 def send_message():
     message = chat_ui.get_message()
+    print('send_message():' + message)
     if message != '':
         client.sendall(message.encode())
         chat_ui.clear_message_textbox()
@@ -48,9 +49,10 @@ def listen_for_messages_from_server(client_socket):
         try:
             message = client_socket.recv(2048).decode('utf-8')
             if message:
-                if '~' in message:
-                    username, content = message.split('~', 1)  # Split only once
-                    add_message(f"[{username}] {content}")
+                if ',' in message:
+                    print(message)
+                    timestamp, username, content = message.split(',')  # Split only once
+                    add_message(f"[{timestamp}] [{username}] {content}")
                 else:
                     add_message(f"[SERVER] {message}")
             else:
