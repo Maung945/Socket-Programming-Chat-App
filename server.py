@@ -4,7 +4,7 @@ from datetime import datetime
 import csv  # Import the CSV module for writing CSV files
 
 HOST = '127.0.0.1'
-PORT = 12346
+PORT = 12345
 LISTENER_LIMIT = 5
 active_clients = []
 
