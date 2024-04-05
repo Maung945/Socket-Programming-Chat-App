@@ -1,4 +1,5 @@
 from datetime import datetime
+import time
 
 #subject to change...
 
@@ -39,23 +40,34 @@ class LitProtocolPacket:
     and to serialize/deserialize the packet data. The packet length is calculated
     internally and not set in the constructor.
     """
-    
-    def __init__(self, message_type, options_flags, timestamp, message_id, iv, hash_value, payload):
-        self.message_type = message_type
-        self.options_flags = options_flags
-        self.timestamp = timestamp
-        self.message_id = message_id
-        self.iv = iv
-        self.hash_value = hash_value
-        self.payload = payload
-        #Calculate packet length internally as the sum of all header fields and payload
-        self.packet_length = self.calculate_packet_length()
+    def __init__(self, message_type, options_flags, message_id, iv, HMAC, payload):
+        self.message_type = message_type                        #Message type...
+        self.options_flags = options_flags                      #Options flags...
+        self.message_id = message_id                            #Message ID...
+        self.iv = iv                                            #Encryption Interrupt Vector...
+        self.HMAC = HMAC                                        #HMAC value...
+        self.payload = payload                                  #Message Payload...
+        self.timestamp = self.generate_timestamp()              #Generate timestamp when object is constructed...
+        self.packet_length = self.calculate_packet_length()     #Generate length after object is constructed...
+
+        
 
     def calculate_packet_length(self):
-        #Header size = sum of the sizes of all fixed-length fields
+        """
+        Calculates the overall length of the packet (Header + Payload).
+        """
+        #Header size = sum of the sizes of all fixed-length fields...
         header_size = 2 + 2 + 4 + 8 + 8 + 16 + 32
-        #Packet length includes the size of the header and the payload
+        #Packet length includes the size of the header and the payload...
         return header_size + len(self.payload)
+
+    def generate_timestamp(self):
+        """
+        Calculates the current time and date, encodes it as a 64-bit UNIX timestamp...
+        """
+        dispatch_time = datetime.datetime.now()         #Time message is sent as Python datetime object...
+        return (time.mktime(dispatch_time.timetuple())) #Time message is sent as UNIX timestamp...
+
 
     @staticmethod
     def encode(packet):
@@ -102,4 +114,4 @@ class LitProtocolPacket:
     def __repr__(self):
         return (f"LitProtocolPacket(message_type={self.message_type}, options_flags={self.options_flags}, "
                 f"packet_length={self.packet_length}, timestamp={self.timestamp}, message_id={self.message_id}, "
-                f"iv={self.iv}, hash_value={self.hash_value}, payload={self.payload[:10]}...)")
+                f"iv={self.iv}, HMAC={self.HMAC}, payload={self.payload[:10]}...)")
