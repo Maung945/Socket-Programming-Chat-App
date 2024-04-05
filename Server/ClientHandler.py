@@ -2,24 +2,18 @@ import sys
 import csv
 from pathlib import Path
 import threading
+from ..Common.Packet import TextPayload
 
-"""
-This snippet below is to allow for custom modules to be shared between client and server
-custom modules may be beneficial for us if we wanted to work on functionality
-that both the client and server can use, saving on development time. These modules
-are stored in the "Common" folder...
-"""
-project_root = Path(__file__).resolve().parent.parent
-sys.path.append(str(project_root))
-from Common.Packet import TextPayload
 
 class ClientHandler():
     def __init__(self, active_clients_list):
         self.active_clients_list = active_clients_list
         self.sent_messages_set = set()                  #Set to store previously sent messages...
         
-    #When a client connects, notify other users...
     def handle_client(self, client_socket):
+        """
+        When a client connects, notify other users...
+        """
         username_str = client_socket.recv(2048).decode('utf-8')
         if username_str:
             self.active_clients_list.append((username_str, client_socket))
@@ -28,8 +22,11 @@ class ClientHandler():
         else:
             print("Client username is empty...")
     
-    #Listen for messages, then rebroadcast them to all other active users...
+    
     def listen_for_messages(self, client_socket, username_str):
+        """
+        Listen for messages, then rebroadcast them to all other active users...
+        """
         while True:
             try:
                 content_str = client_socket.recv(2048).decode('utf-8')
@@ -45,17 +42,20 @@ class ClientHandler():
                 self.cleanup_client(username_str, client_socket, f"{username_str} left the chatroom...")
                 break
     
-    #Send message to an individual client...
     def send_message_to_client(self, client_socket, message_str):
+        """
+        Send message to an individual client...
+        """
         try:
             client_socket.sendall(message_str.encode())
         except BrokenPipeError:
             print(f"Unable to send message to a disconnected client.")
 
-    #Send messages to all users in the connected users list...
     def send_messages_to_all(self, message_str):
+        """
+        Send messages to all users in the connected users list...
+        """
         print(f'send_messages_to_all(): {message_str}')  #Debug line
-
         if message_str not in self.sent_messages_set:
             disconnected_clients_list = []
             for username_str, client_socket in self.active_clients_list[:]:
@@ -72,13 +72,18 @@ class ClientHandler():
             self.sent_messages_set.add(message_str)
             self.log_message(message_str)
 
-    #If client is disconnected, remove from connected clients list...
+    
     def cleanup_client(self, username_str, client_socket, leave_message_str):
+        """
+        If client is disconnected, remove from connected clients list...
+        """
         self.active_clients_list.remove((username_str, client_socket))
         self.send_messages_to_all(str(TextPayload.Generate("Server", leave_message_str)))
     
-    #Save message to CSV...
     def log_message(self, message_str):
+        """
+        Save message to CSV...
+        """
         message_obj = TextPayload.from_string(message_str)
         if message_obj:
             with open("chat_record.csv", "a", newline='') as file_obj:
