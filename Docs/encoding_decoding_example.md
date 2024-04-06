@@ -1,6 +1,6 @@
 # Lit Protocol Packet Documentation
 
-This document explains the structure and functionality of the Lit Protocol Packet, which includes the `LitProtocolPacket` class and associated methods.
+This document explains the how to encode and decode a `LitProtocolPacket` class and associated methods for processing by a client/server.
 
 ## Overview
 
