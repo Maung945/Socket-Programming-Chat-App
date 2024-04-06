@@ -1,6 +1,5 @@
 from datetime import datetime
 import time
-import secrets
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hmac
 from cryptography.hazmat.primitives import hashes
@@ -44,17 +43,15 @@ class LitProtocolPacket:
     and to serialize/deserialize the packet data. The packet length is calculated
     internally and not set in the constructor.
     """
-    def __init__(self, message_type, options_flags, message_id, iv, HMAC, payload):
-        self.message_type = message_type                        #Message type...
-        self.options_flags = options_flags                      #Options flags...
-        self.message_id = message_id                            #Message ID...
-        self.iv = iv                                            #Encryption Interrupt Vector...      
-        self.payload = payload                                  #Message Payload...
-        self.HMAC = self.generate_hmac()                        #Generate HMAC based on secret key from server...
-        self.timestamp = self.generate_timestamp()              #Generate timestamp when object is constructed...
-        self.packet_length = self.calculate_packet_length()     #Generate length after object is constructed...
-
-        
+    def __init__(self, message_type, options_flags, message_id, iv, hmac, payload, timestamp=None):
+        self.message_type = message_type                        # Message type...
+        self.options_flags = options_flags                      # Options flags...
+        self.message_id = message_id                            # Message ID...
+        self.iv = iv                                            # Encryption Interrupt Vector...
+        self.hmac = hmac                                        # HMAC hash value...
+        self.payload = payload                                  # Message Payload...
+        self.timestamp = timestamp if timestamp is not None else self.generate_timestamp()  # Decode timestamp if provided, else decode from packet data...
+        self.packet_length = self.calculate_packet_length()     # Generate length after object is constructed...
 
     def calculate_packet_length(self):
         """
@@ -69,17 +66,15 @@ class LitProtocolPacket:
         """
         Calculates the current time and date, encodes it as a 64-bit UNIX timestamp...
         """
-        dispatch_time = datetime.datetime.now()         #Time message is sent as Python datetime object...
+        dispatch_time = datetime.now()         #Time message is sent as Python datetime object...
         return (time.mktime(dispatch_time.timetuple())) #Time message is sent as UNIX timestamp...
 
     def generate_hmac(self, secret_key):
         """
         Generate the HMAC of a particular message payload...
         """
-        secret_key = secrets.token_bytes(32)
-        key = secret_key.encode()
-        h = hmac.HMAC(key, hashes.SHA256(), backend=default_backend())
-        h.update(self.payload.encode())
+        h = hmac.HMAC(secret_key, hashes.SHA256(), backend=default_backend())
+        h.update(self.payload)
         return h.finalize()
 
     @staticmethod
@@ -93,10 +88,10 @@ class LitProtocolPacket:
             packet.message_type +
             packet.options_flags +
             packet.packet_length.to_bytes(4, 'big') +
-            packet.timestamp +
+            int(packet.timestamp).to_bytes(8, 'big') +
             packet.message_id +
             packet.iv +
-            packet.hash_value +
+            packet.hmac +
             packet.payload
         )
 
@@ -111,7 +106,7 @@ class LitProtocolPacket:
         timestamp = packet_data[8:16]
         message_id = packet_data[16:24]
         iv = packet_data[24:40]
-        hash_value = packet_data[40:72]
+        hmac = packet_data[40:72]
         payload = packet_data[72:]
 
         return LitProtocolPacket(
@@ -120,11 +115,11 @@ class LitProtocolPacket:
             timestamp=timestamp,
             message_id=message_id,
             iv=iv,
-            hash_value=hash_value,
+            hmac=hmac,
             payload=payload
         )
 
     def __repr__(self):
         return (f"LitProtocolPacket(message_type={self.message_type}, options_flags={self.options_flags}, "
                 f"packet_length={self.packet_length}, timestamp={self.timestamp}, message_id={self.message_id}, "
-                f"iv={self.iv}, HMAC={self.HMAC}, payload={self.payload[:10]}...)")
+                f"iv={self.iv}, hmac={self.hmac}, payload={self.payload[:10]}...)")
