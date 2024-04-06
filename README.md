@@ -27,7 +27,7 @@ This project is an encrypted messaging application implemented in Python, utiliz
    ```
 3. Install the required dependencies.
    ```
-   pip install -r cryptography
+   pip install cryptography
    ```
 
 ## Usage
