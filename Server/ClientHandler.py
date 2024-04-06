@@ -1,9 +1,12 @@
-import sys
 import csv
-from pathlib import Path
 import threading
-from ..Common.Packet import TextPayload
+import os
+import sys
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+from Common.Packet import TextPayload
 
 class ClientHandler():
     def __init__(self, active_clients_list):
