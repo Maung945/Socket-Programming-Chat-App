@@ -1,10 +1,10 @@
-# Lit Protocol Packet Documentation
+# Lit Protocol Parket (LITP) Encoding/Decoding Guide
 
 This document explains the how to encode and decode a `LitProtocolPacket` class and associated methods for processing by a client/server.
 
 ## Overview
 
-The Lit Protocol Packet is designed to represent a packet in the Lit Protocol, consisting of a header and payload. It provides functionality to calculate packet length, serialize/deserialize packet data, generate HMAC, and more.
+The Lit Protocol Packet is designed to represent a packet in the Lit Protocol, consisting of a header and payload. It provides functionality to calculate packet length, serialize/deserialize packet data, generate HMAC, and more. First you instantiate a LITP packet using it's constructor, you then encode it into bytes. Then, when recieving the packet via TCP, you can decode it into a LITP packet object, and can retrieve data from the member variables of the object.
 
 ## Usage Example
 
