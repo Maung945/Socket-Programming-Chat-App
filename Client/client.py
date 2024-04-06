@@ -4,7 +4,7 @@ import re
 from ui import ChatUI  
 
 HOST = '127.0.0.1'
-PORT = 12345
+PORT = 12312
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -51,7 +51,7 @@ def listen_for_messages_from_server(client_socket):
             if message:
                 if ',' in message:
                     print(message)
-                    timestamp, username, content = message.split(',')  # Split only once
+                    timestamp, username, content = message.split(',',2)  # Split only once
                     add_message(f"[{timestamp}] [{username}] {content}")
                 else:
                     add_message(f"[SERVER] {message}")
