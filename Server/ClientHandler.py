@@ -1,7 +1,17 @@
 import csv
 import threading
-import os
 import sys
+import os
+
+# Adjusting sys.path to include the Common directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+
+from Common.encryption_utils import encrypt_message, decrypt_message, load_key
+#common_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Common'))
+#sys.path.append(common_path)
+#from Common.encryption_utils import encrypt_message, decrypt_message, load_key
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
@@ -30,10 +40,12 @@ class ClientHandler():
         """
         Listen for messages, then rebroadcast them to all other active users...
         """
+        key = load_key()
         while True:
             try:
-                content_str = client_socket.recv(2048).decode('utf-8')
-                if content_str:
+                encrypted_content  = client_socket.recv(2048).decode('utf-8')
+                if encrypted_content :
+                    content_str = decrypt_message(encrypted_content, key)
                     message_obj = TextPayload.Generate(username_str, content_str)
                     print(f'listen_for_messages(): {message_obj}')  #Debug line
                     self.send_messages_to_all(str(message_obj))
@@ -58,12 +70,15 @@ class ClientHandler():
         """
         Send messages to all users in the connected users list...
         """
+        key = load_key()  # Load the key
+        encrypted_message = encrypt_message(message_str, key)  # Encrypt the message
         print(f'send_messages_to_all(): {message_str}')  #Debug line
         if message_str not in self.sent_messages_set:
             disconnected_clients_list = []
             for username_str, client_socket in self.active_clients_list[:]:
                 try:
-                    self.send_message_to_client(client_socket, message_str)
+                    client_socket.sendall(encrypted_message)  # Send encrypted message
+                    #self.send_message_to_client(client_socket, message_str)
                 except BrokenPipeError: 
                     #If a user is disconnected (broken pipe error), they will be removed from the list of active clients...
                     disconnected_clients_list.append((username_str, client_socket))

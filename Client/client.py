@@ -1,7 +1,14 @@
+import sys
+import os
 import socket
 import threading
 import re
 from ui import ChatUI  
+
+project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+common_path = os.path.join(project_dir, 'Common')
+sys.path.append(common_path)
+from encryption_utils import encrypt_message, decrypt_message, load_key
 
 HOST = '127.0.0.1'
 PORT = 12312
@@ -33,9 +40,12 @@ def connect():
 
 def send_message():
     message = chat_ui.get_message()
-    print('send_message():' + message)
     if message != '':
-        client.sendall(message.encode())
+        print('send_message():' + message)
+        key = load_key()
+        encrypted_message = encrypt_message(message, key)
+        client.sendall(encrypted_message)
+        #client.sendall(message.encode())
         chat_ui.clear_message_textbox()
     else:
         chat_ui.show_error("Empty message", "Message cannot be empty")
@@ -45,16 +55,22 @@ def exit_chat():
     chat_ui.root.destroy()
 
 def listen_for_messages_from_server(client_socket):
+    key = load_key()  # Load the key
     while True:
         try:
-            message = client_socket.recv(2048).decode('utf-8')
-            if message:
+            encrypted_message = client_socket.recv(2048)
+            if encrypted_message:
+                message = decrypt_message(encrypted_message, key)
+                print(message)  # It's now decrypted and readable
+                #add_message(message)
                 if ',' in message:
-                    print(message)
                     timestamp, username, content = message.split(',',2)  # Split only once
-                    add_message(f"[{timestamp}] [{username}] {content}")
+                    formatted_message = f"[{timestamp}] [{username}] {content}"
+                    #add_message(f"[{timestamp}] [{username}] {content}")
                 else:
-                    add_message(f"[SERVER] {message}")
+                    formatted_message = f"[SERVER] {message}"
+                    #add_message(f"[SERVER] {message}")
+                add_message(formatted_message)
             else:
                 chat_ui.show_error("Error", "Disconnected from server")
                 break
