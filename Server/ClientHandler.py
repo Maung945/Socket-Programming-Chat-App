@@ -52,23 +52,27 @@ class ClientHandler():
         Listen for messages, then rebroadcast them to all other active users...
         """
         while True:
-            message_packet = LitProtocolPacket.decodePacket(client_socket.recv(2048))
-            message_packet.payload = TextPayload.Generate(username_str, message_packet.payload.decode('utf-8')).encode('utf-8')
-            
-            print("[BEGIN RECIEVED PACKET]\n" + str(message_packet) + "\nEND PACKET]") #Debug line...
-            
-            try:             
-                if message_packet.payload:
-                   
-                    print(f'listen_for_messages(): {message_packet}')  #Debug line
-                    self.send_messages_to_all(message_packet)
+            try:
+                data = client_socket.recv(2048)
+                if data:
+                    message_packet = LitProtocolPacket.decodePacket(data)
+                    message_packet.payload = TextPayload.Generate(username_str, message_packet.payload.decode('utf-8')).encode('utf-8')
+                
+                    print("[BEGIN RECEIVED PACKET]\n" + str(message_packet) + "\n[END PACKET]")  #Debug line...
+                    if message_packet.payload:
+                        print(f'listen_for_messages(): {message_packet}')  #Debug line
+                        self.send_messages_to_all(message_packet)
+                    else:
+                        print(f"The message sent from client {username_str} is empty...")
+                        break 
                 else:
-                    print(f"The message sent from client {username_str} is empty...")
-                    break  #Client disconnected
+                    print(f"Client {username_str} disconnected gracefully.")
+                    break  #Properly exit the loop if the client disconnects...
             except ConnectionResetError:
-                print(f"Client {username_str} disconnected")
-                self.cleanup_client(username_str, client_socket, f"{username_str} left the chatroom...")
-                break
+                print(f"Client {username_str} disconnected with an error.")
+                break  #Exit the loop if there's a connection reset error...
+        
+        self.cleanup_client(username_str, client_socket)  # Cleanup after breaking out of the loop...
 
 
     def send_messages_to_all(self, message_packet):
@@ -100,8 +104,36 @@ class ClientHandler():
         """
         If client is disconnected, remove from connected clients list...
         """
-        self.active_clients_list.remove((username_str, client_socket))
-        self.send_messages_to_all(TextPayload.Generate("Server", f"{username_str} has left the server."))
+        exit_message = TextPayload.Generate("Server", f"{username_str} has left the server.")
+            
+        #Sample values
+        message_type = b'\x00\x00'                         #0x00 = TEXT MESSAGE, 0x01 = IMAGE, 0x02 = GENERIC FILE (subject to change)...
+        message_options_flags = b'\x00\x00'                #0x00 = NO ENCRYPTION, 0x01 = ENCRYPTION...
+        message_message_id = os.urandom(8)                 #For other features maybe...
+        message_iv = os.urandom(16)                        #Dummy IV, for when we implement encryption...
+        message_payload = exit_message                     #Payload (currently as TextPayload)
+        message_hmac = os.urandom(32)                      #Dummy HMAC, for when we implement encryption...
+        
+        #Creating the LitProtocolPacket object...
+        message_packet = LitProtocolPacket(
+            message_type=message_type,
+            options_flags=message_options_flags,
+            message_id=message_message_id,
+            iv=message_iv,
+            hmac=message_hmac,
+            payload=message_payload.encode()               #Serializing the payload to a byte string for TCP transmission...
+        )        
+        # If the client is in the active list, remove it and notify others
+        if (username_str, client_socket) in self.active_clients_list:
+            self.active_clients_list.remove((username_str, client_socket))
+            self.send_messages_to_all(message_packet)
+            try:
+                client_socket.close()  # Ensure the client's socket is closed
+            except OSError:
+                pass  # Socket already closed or unusable
+    
+
+
     
     def log_message(self, formatted_payload_str):
         """
