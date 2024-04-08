@@ -27,6 +27,12 @@ To create a `LitProtocolPacket` object, the following parameters are required:
 The following example demonstrates how to create a `LitProtocolPacket` object with a text message payload, showcasing the process from instantiation to encoding and decoding, this example also demonstrates how one would parse the packet header in order to determine the appropriate operations to perform on the payload:
 
 ```python
+import os
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+from Common.Packet import LitProtocolPacket
+
 #Sample values for creating a LitProtocolPacket object
 message_type = b'\x00\x00'       #TEXT MESSAGE...
 options_flags = b'\x00\x00'      #NO ENCRYPTION...
