@@ -12,13 +12,12 @@ class TextPayload:
         self.timestamp = timestamp
         self.username = username
         self.content = content
-
-    #Generates a text payload object based on the current time...
+class TextPayload:
     @staticmethod
     def Generate(username, content):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        return TextPayload(timestamp, username, content)
-
+        return f"{timestamp},{username},{content}"
+    
     #Per object...
     @classmethod
     def from_string(cls, message_str):
@@ -31,10 +30,6 @@ class TextPayload:
     #Defining string casting...
     def __str__(self):
         return f"{self.timestamp},{self.username},{self.content}"
-
-    #Defining list casting...
-    def to_csv(self):
-        return [self.timestamp, self.username, self.content]
     
 class LitProtocolPacket:
     """
@@ -43,13 +38,14 @@ class LitProtocolPacket:
     and to serialize/deserialize the packet data. The packet length is calculated
     internally and not set in the constructor.
     """
-    def __init__(self, message_type, options_flags, message_id, iv, hmac, payload, timestamp=None):
+    def __init__(self, message_type, options_flags, message_id, iv, payload, timestamp=None, hmac = None):
         self.message_type = message_type                        # Message type...
         self.options_flags = options_flags                      # Options flags...
         self.message_id = message_id                            # Message ID...
         self.iv = iv                                            # Encryption Interrupt Vector...
-        self.hmac = hmac                                        # HMAC hash value...
         self.payload = payload                                  # Message Payload...
+        #self.secret_key = secret_key
+        self.hmac = hmac                                    # HMAC hash value...
         self.timestamp = timestamp if timestamp is not None else self.generate_timestamp()  # Decode timestamp if provided, else decode from packet data...
         self.packet_length = self.calculate_packet_length()     # Generate length after object is constructed...
 
@@ -66,8 +62,22 @@ class LitProtocolPacket:
         """
         Calculates the current time and date, encodes it as a 64-bit UNIX timestamp...
         """
-        dispatch_time = datetime.now()         #Time message is sent as Python datetime object...
-        return (time.mktime(dispatch_time.timetuple())) #Time message is sent as UNIX timestamp...
+        dispatch_time = datetime.now()                           #Time message is sent as Python datetime object...
+        unix_time = int(time.mktime(dispatch_time.timetuple()))  #Time message is sent as UNIX timestamp...
+
+        #Bit-banging into an 8-byte wide string...
+        bit_string = bytes([
+            (unix_time >> 56) & 0xFF,
+            (unix_time >> 48) & 0xFF,
+            (unix_time >> 40) & 0xFF,
+            (unix_time >> 32) & 0xFF,
+            (unix_time >> 24) & 0xFF,
+            (unix_time >> 16) & 0xFF,
+            (unix_time >> 8) & 0xFF,
+            unix_time & 0xFF,
+        ])
+        
+        return bit_string
 
     def generate_hmac(self, secret_key):
         """
@@ -78,7 +88,7 @@ class LitProtocolPacket:
         return h.finalize()
 
     @staticmethod
-    def encode(packet):
+    def encodePacket(packet):
         """
         Serializes the packet object into bytes for TCP transmission, including recalculating packet length.
         See documentation regarding packet structure...
@@ -88,7 +98,7 @@ class LitProtocolPacket:
             packet.message_type +
             packet.options_flags +
             packet.packet_length.to_bytes(4, 'big') +
-            int(packet.timestamp).to_bytes(8, 'big') +
+            packet.timestamp + 
             packet.message_id +
             packet.iv +
             packet.hmac +
@@ -96,7 +106,7 @@ class LitProtocolPacket:
         )
 
     @staticmethod
-    def decode(packet_data):
+    def decodePacket(packet_data):
         """
         Deserializes the bytes into a packet object for TCP reception. See documentation regarding packet structure...
         """
