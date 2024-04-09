@@ -22,6 +22,9 @@ class ChatUI:
         self.root.title("PSCCA Chat App")
         self.root.resizable(True, True)
 
+        # Set application icon
+        self.root.iconbitmap("Client/logo1.ico")
+        
         #TK Structure...
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_rowconfigure(1, weight=4)
@@ -133,10 +136,16 @@ class ChatUI:
 
     def show_error(self, title, message):
         messagebox.showerror(title, message)
-
+    '''
     def send_shortcut(self, event):
         if event.state == 12 and event.keysym.lower() == "return":
             self.send_message()
+    '''
+    def send_shortcut(self, event):
+    # Check if the "Ctrl" key and the "Enter" key are pressed simultaneously
+        if event.state & 0x4 and event.keysym.lower() == "return":
+            self.send_message()
+
     # function that will mimic the join button through a shortcut key which is "Enter"
     def join_shortcut(self, event):
         # check if the key pressed is "Enter"
