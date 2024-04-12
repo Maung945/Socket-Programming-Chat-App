@@ -1,7 +1,17 @@
 import csv
 import threading
-import os
 import sys
+import os
+
+# Adjusting sys.path to include the Common directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+
+from Common.encryption_utils import encrypt_message, decrypt_message, load_key
+#common_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Common'))
+#sys.path.append(common_path)
+#from Common.encryption_utils import encrypt_message, decrypt_message, load_key
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
@@ -51,20 +61,23 @@ class ClientHandler():
         """
         Listen for messages, then rebroadcast them to all other active users...
         """
+        key = load_key()
         while True:
             try:
                 data = client_socket.recv(2048)
-                if data:
-                    message_packet = LitProtocolPacket.decodePacket(data)
-                    message_packet.payload = TextPayload.Generate(username_str, message_packet.payload.decode('utf-8')).encode('utf-8')
-                
+                if data: #We should probably not do this here, but I'll fix it later...
+                    message_packet = LitProtocolPacket.decodePacket(data)    #Recieve the message packet...
+                    decrypted_payload = decrypt_message(message_packet.payload, key) #Decrypt the message packet...
+                    formatted_payload = TextPayload.Generate(username_str, message_packet.payload.decode('utf-8')).encode('utf-8') #Format the new payload (this line is really bad, fix later)...
+                    message_packet.payload = formatted_payload #Fix this line later...
+                    
                     print("[BEGIN RECEIVED PACKET]\n" + str(message_packet) + "\n[END PACKET]")  #Debug line...
                     if message_packet.payload:
                         print(f'listen_for_messages(): {message_packet}')  #Debug line
                         self.send_messages_to_all(message_packet)
                     else:
                         print(f"The message sent from client {username_str} is empty...")
-                        break 
+                        break
                 else:
                     print(f"Client {username_str} disconnected gracefully.")
                     break  #Properly exit the loop if the client disconnects...

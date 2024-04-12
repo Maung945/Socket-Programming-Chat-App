@@ -1,3 +1,5 @@
+import sys
+import os
 import socket
 import threading
 import re
@@ -13,6 +15,11 @@ sys.path.append(parent_dir)
 from Common.Packet import LitProtocolPacket
 
 stop_event = threading.Event()
+
+project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+common_path = os.path.join(project_dir, 'Common')
+sys.path.append(common_path)
+from encryption_utils import encrypt_message, decrypt_message, load_key
 
 HOST = '127.0.0.1'
 PORT = 12346
@@ -44,12 +51,14 @@ def connect():
 
 def send_message():
     #Sample values
-    message_type = b'\x00\x00'                         #0x00 = TEXT MESSAGE, 0x01 = IMAGE, 0x02 = GENERIC FILE (subject to change)...
-    message_options_flags = b'\x00\x00'                #0x00 = NO ENCRYPTION, 0x01 = ENCRYPTION...
-    message_message_id = os.urandom(8)                 #For other features maybe...
-    message_iv = os.urandom(16)                        #Dummy IV, for when we implement encryption...
-    message_payload = chat_ui.get_message()            #Payload (currently as TextPayload)
-    message_hmac = os.urandom(32)                      #Dummy HMAC, for when we implement encryption...
+    message_type = b'\x00\x00'                                      #0x00 = TEXT MESSAGE, 0x01 = IMAGE, 0x02 = GENERIC FILE (subject to change)...
+    message_options_flags = b'\x00\x00'                             #0x00 = NO ENCRYPTION, 0x01 = ENCRYPTION...
+    message_message_id = os.urandom(8)                              #For other features maybe...
+    message_iv = os.urandom(16)                                     #Dummy IV, for when we implement encryption...  
+    key = load_key()                                                #Load up the s3cr3t key...
+    print('send_message():' + chat_ui.get_message())                #Debug line before encryption...
+    message_payload = encrypt_message(chat_ui.get_message(), key)   #Fetch message and encrypt it using the s3cr3t key...
+    message_hmac = os.urandom(32)                                   #Dummy HMAC, for when we implement encryption...
     
     #Creating the LitProtocolPacket object...
     message_packet = LitProtocolPacket(
@@ -61,12 +70,13 @@ def send_message():
         payload=message_payload.encode()  #Serializing the payload to a byte string for TCP transmission...
     )        
     
-    print('send_message():' + str(message_packet.payload))
+    print('send_message():' + str(message_packet.payload)) #Debug line after encryption...
     if message_packet.payload.decode() != '':
         client.sendall(LitProtocolPacket.encodePacket(message_packet))
         chat_ui.clear_message_textbox()
     else:
         chat_ui.show_error("Empty message", "Message cannot be empty")
+
 
 def exit_chat():
     #Signal the listening thread to stop...
@@ -85,7 +95,6 @@ def listen_for_messages_from_server(client_socket):
             if not data:
                 print("Server closed connection")
                 break  #Exit the loop if no data is received; indicates the server closed the connection...
-           
         except socket.timeout:
             continue  #Ignore timeout exceptions...
         except Exception as e:
@@ -93,6 +102,7 @@ def listen_for_messages_from_server(client_socket):
             break
 
 def listen_for_messages_from_server(client_socket):
+    key = load_key()  #Load the key
     while not stop_event.is_set():
         try:
             data = client_socket.recv(2048)
@@ -100,7 +110,7 @@ def listen_for_messages_from_server(client_socket):
                 print("Server closed connection or no data received.")
                 break
             message_packet = LitProtocolPacket.decodePacket(data)
-            message = message_packet.payload.decode('utf-8')
+            message = decrypt_message(message_packet.payload.decode('utf-8'), key) #Decoding and decrypting message...
             #Process the message as before...
             if message:
                 if ',' in message:
