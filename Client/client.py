@@ -6,20 +6,14 @@ import re
 import os
 import sys
 import time
-
-from ui import ChatUI  
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
-
+from Common.encryption_utils import encrypt_message, decrypt_message, load_key
 from Common.Packet import LitProtocolPacket
+from ui import ChatUI  
 
 stop_event = threading.Event()
-
-project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-common_path = os.path.join(project_dir, 'Common')
-sys.path.append(common_path)
-from encryption_utils import encrypt_message, decrypt_message, load_key
 
 HOST = '127.0.0.1'
 PORT = 12346
@@ -67,7 +61,7 @@ def send_message():
         message_id=message_message_id,
         iv=message_iv,
         hmac=message_hmac,
-        payload=message_payload.encode()  #Serializing the payload to a byte string for TCP transmission...
+        payload=message_payload  #Serializing the payload to a byte string for TCP transmission...
     )        
     
     print('send_message():' + str(message_packet.payload)) #Debug line after encryption...
@@ -89,19 +83,6 @@ def exit_chat():
 
 
 def listen_for_messages_from_server(client_socket):
-    while not stop_event.is_set():
-        try:
-            data = client_socket.recv(2048)
-            if not data:
-                print("Server closed connection")
-                break  #Exit the loop if no data is received; indicates the server closed the connection...
-        except socket.timeout:
-            continue  #Ignore timeout exceptions...
-        except Exception as e:
-            print(f"Error receiving message: {e}")
-            break
-
-def listen_for_messages_from_server(client_socket):
     key = load_key()  #Load the key
     while not stop_event.is_set():
         try:
@@ -110,7 +91,9 @@ def listen_for_messages_from_server(client_socket):
                 print("Server closed connection or no data received.")
                 break
             message_packet = LitProtocolPacket.decodePacket(data)
-            message = decrypt_message(message_packet.payload.decode('utf-8'), key) #Decoding and decrypting message...
+            print(message_packet.payload)
+            message = decrypt_message(message_packet.payload, key) #Decoding and decrypting message...
+            print("from server decrypted:" + message)
             #Process the message as before...
             if message:
                 if ',' in message:
