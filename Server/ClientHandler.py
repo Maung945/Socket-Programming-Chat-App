@@ -2,6 +2,7 @@ import csv
 import threading
 import sys
 import os
+import emoji
 
 # Adjusting sys.path to include the Common directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -88,7 +89,6 @@ class ClientHandler():
         
         self.cleanup_client(username_str, client_socket)  # Cleanup after breaking out of the loop...
 
-
     def send_messages_to_all(self, message_packet):
         """
         Send messages to all users in the connected users list...
@@ -112,8 +112,6 @@ class ClientHandler():
             self.sent_messages_set.add(message_packet.payload)
             self.log_message(message_packet.payload.decode())
 
-
-    
     def cleanup_client(self, username_str, client_socket):
         """
         If client is disconnected, remove from connected clients list...
@@ -146,9 +144,6 @@ class ClientHandler():
             except OSError:
                 pass  # Socket already closed or unusable
     
-
-
-    
     def log_message(self, formatted_payload_str):
         """
         Save message to CSV file...
@@ -161,3 +156,4 @@ class ClientHandler():
             with open("chat_record.csv", "a", newline='') as file_obj:
                 csv_writer = csv.writer(file_obj)
                 csv_writer.writerow(message_parts) 
+ 
