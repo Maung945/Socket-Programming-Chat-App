@@ -106,23 +106,27 @@ class ChatUI:
 
         # clear button
         clear_button = tk.Button(bottom_frame, text="Clear", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE,
-                                 command=self.clear_message_textbox)
+                                command=self.clear_message_textbox)
         clear_button.pack(side=tk.LEFT, padx=10)
 
-        self.message_textbox = tk.Entry(bottom_frame, font=FONT, bg=MEDIUM_GREY, fg=BLACK)
-        self.message_textbox.bind("<KeyPress>", self.send_shortcut)
+        # Create a StringVar to track changes in the message textbox
+        self.message_text_var = tk.StringVar()
+        self.message_text_var.trace("w", self.validate_message_text)
+
+        self.message_textbox = tk.Entry(bottom_frame, font=FONT, bg=MEDIUM_GREY, fg=BLACK, textvariable=self.message_text_var)
         self.message_textbox.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
 
-        message_button = tk.Button(bottom_frame, text="Send", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE,
-                                   command=self.send_message)
-        message_button.pack(side=tk.LEFT, padx=10)
+        # Send Button
+        self.send_button = tk.Button(bottom_frame, text="Send", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE,
+                                command=self.send_message, state=tk.DISABLED)
+        self.send_button.pack(side=tk.LEFT, padx=10)
 
         self.exit_button = tk.Button(bottom_frame, text="Exit", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE,
-                                     command=self.on_closing)
+                                    command=self.on_closing)
 
         # Emoji button
         self.emoji_button = tk.Button(bottom_frame, text="Emoji", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE,
-                             command=self.show_emoji_popup)
+                            command=self.show_emoji_popup)
         self.emoji_button.pack(side=tk.LEFT, padx=10)
         self.emoji_button.config(state=tk.DISABLED)
 
@@ -142,6 +146,10 @@ class ChatUI:
     def send_message(self):
         if self.send_message_callback:
             self.send_message_callback()
+        
+        # After sending the message, clear the message textbox and disable the send button
+        self.clear_message_textbox()
+        self.send_button.config(state=tk.DISABLED)
 
     def exit_chat(self):
         if self.exit_callback:
@@ -198,7 +206,7 @@ class ChatUI:
         # show a info box when closing the window
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
             self.exit_chat()
- 
+    
     def show_emoji_popup(self):
         if not self.emoji_popup:
             self.emoji_popup = tk.Toplevel(self.root)
@@ -221,7 +229,7 @@ class ChatUI:
             emoji_canvas.create_window((0, 0), window=emoji_frame, anchor='nw')
 
             for i, emoj in enumerate(self.emoji_list):
-                emoji_button = tk.Button(emoji_frame, text=emoj, font=("Arial", 12),
+                emoji_button = tk.Button(emoji_frame, text=emoj, font=("Arial", 15),
                                         command=lambda e=emoj: self.insert_emoji(e))
                 emoji_button.grid(row=i // 5, column=i % 5, padx=5, pady=5)
 
@@ -267,6 +275,15 @@ class ChatUI:
             messagebox.showerror("Error", f"OS error: {str(oe)}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to export chat: {str(e)}")
+
+    def validate_message_text(self, *args):
+        # Check if the message textbox is empty
+        if self.get_message():
+            # If there is something in the textbox, enable the send button
+            self.send_button.config(state=tk.NORMAL)
+        else:
+            # If the textbox is empty, disable the send button
+            self.send_button.config(state=tk.DISABLED)
 
     def mainloop(self):
         self.root.mainloop()
