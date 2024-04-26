@@ -2,23 +2,11 @@ import csv
 import threading
 import sys
 import os
-import emoji
-
-# Adjusting sys.path to include the Common directory
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.append(parent_dir)
-
-from Common.encryption_utils import encrypt_message, decrypt_message, load_key
-#common_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Common'))
-#sys.path.append(common_path)
-#from Common.encryption_utils import encrypt_message, decrypt_message, load_key
-
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 from Common.Packet import TextPayload, LitProtocolPacket
-
+from Common.encryption_utils import encrypt_message, decrypt_message, load_key
 
 class ClientHandler():
     def __init__(self, active_clients_list):
@@ -27,38 +15,41 @@ class ClientHandler():
         
     def handle_client(self, client_socket):
         """
-        When a client connects, notify other users...
+        When a client connects, perform name duplication check,notify other users...
         """
         key = load_key()
         username_str = client_socket.recv(2048).decode('utf-8')
-        if username_str:
-            welcome_message = encrypt_message(TextPayload.Generate("SERVER", f"{username_str} was added to the chat!"), key)
-            
-            #Sample values
-            message_type = b'\x00\x00'                         #0x00 = TEXT MESSAGE, 0x01 = IMAGE, 0x02 = GENERIC FILE (subject to change)...
-            message_options_flags = b'\x00\x00'                #0x00 = NO ENCRYPTION, 0x01 = ENCRYPTION...
-            message_message_id = os.urandom(8)                 #For other features maybe...
-            message_iv = os.urandom(16)                        #Dummy IV, for when we implement encryption...
-            message_payload = welcome_message                  #Payload (currently as TextPayload)
-            message_hmac = os.urandom(32)                      #Dummy HMAC, for when we implement encryption...
-            
-            #Creating the LitProtocolPacket object...
-            message_packet = LitProtocolPacket(
-                message_type=message_type,
-                options_flags=message_options_flags,
-                message_id=message_message_id,
-                iv=message_iv,
-                hmac=message_hmac,
-                payload=message_payload              #Serializing the payload to a byte string for TCP transmission...
-            )        
+        
+        #Set the username duplication flag if a duplicate username is detected...
+        duplicate_bool = False
+        for entries in self.active_clients_list:
+            if username_str == entries[0]:
+                duplicate_bool=True
+                print("DUPLICATE FOUND")
 
+        
+        if duplicate_bool: #Send message informing user to change username...
+            #Creating payload and encrypting it...
+            payload = encrypt_message(TextPayload.Generate("SERVER",f"Someone already has username the \"{username_str}\"! Pick another one and reconnect."), key)
+            #Creating packet...
+            message_packet = LitProtocolPacket.generateEncryptedTextMessage(payload) 
+            message_packet.options_flags = b'\x00\x03'                              #Masking in a 1 into bit in position 1 (duplication error bit)...
             #Sending message...
-            self.active_clients_list.append((username_str, client_socket))
-            self.send_messages_to_all(message_packet)
-            threading.Thread(target=self.listen_for_messages, args=(client_socket, username_str)).start()
-        else:
-            print("Client username is empty...")
-    
+            client_socket.sendall(LitProtocolPacket.encodePacket(message_packet))
+            client_socket.close()
+        else: #No duplicate found, add user to active client list.
+            if username_str:
+                #Creating payload and encrypting it...
+                payload = encrypt_message(TextPayload.Generate("SERVER",f"{username_str} has joined the server!"), key)
+                #Creating packet...
+                message_packet = LitProtocolPacket.generateEncryptedTextMessage(payload) 
+                #Sending message...
+                self.active_clients_list.append((username_str, client_socket))
+                self.send_messages_to_all(message_packet)
+                threading.Thread(target=self.listen_for_messages, args=(client_socket, username_str)).start()
+            else:
+                print("Client username is empty...")
+        
     def listen_for_messages(self, client_socket, username_str):
         """
         Listen for messages, then rebroadcast them to all other active users...
@@ -116,25 +107,12 @@ class ClientHandler():
         """
         If client is disconnected, remove from connected clients list...
         """
-        exit_message = TextPayload.Generate("Server", f"{username_str} has left the server.")
-            
-        #Sample values
-        message_type = b'\x00\x00'                         #0x00 = TEXT MESSAGE, 0x01 = IMAGE, 0x02 = GENERIC FILE (subject to change)...
-        message_options_flags = b'\x00\x00'                #0x00 = NO ENCRYPTION, 0x01 = ENCRYPTION...
-        message_message_id = os.urandom(8)                 #For other features maybe...
-        message_iv = os.urandom(16)                        #Dummy IV, for when we implement encryption...
-        message_payload = exit_message                     #Payload (currently as TextPayload)
-        message_hmac = os.urandom(32)                      #Dummy HMAC, for when we implement encryption...
-        
-        #Creating the LitProtocolPacket object...
-        message_packet = LitProtocolPacket(
-            message_type=message_type,
-            options_flags=message_options_flags,
-            message_id=message_message_id,
-            iv=message_iv,
-            hmac=message_hmac,
-            payload=message_payload.encode()               #Serializing the payload to a byte string for TCP transmission...
-        )        
+        key = load_key()
+        #Creating payload and encrypting it...
+        payload = encrypt_message(TextPayload.Generate(f"SERVER", f"{username_str} has left the server."), key)
+        #Creating packet...
+        message_packet = LitProtocolPacket.generateEncryptedTextMessage(payload) 
+
         # If the client is in the active list, remove it and notify others
         if (username_str, client_socket) in self.active_clients_list:
             self.active_clients_list.remove((username_str, client_socket))

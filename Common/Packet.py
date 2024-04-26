@@ -1,5 +1,11 @@
 from datetime import datetime
 import time
+import os
+import sys
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+from Common.encryption_utils import encrypt_message, decrypt_message, load_key
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hmac
 from cryptography.hazmat.primitives import hashes
@@ -8,11 +14,6 @@ from cryptography.hazmat.primitives import hashes
 
 class TextPayload:
     """A class to determine the format of text messages for the purpose of server features..."""
-    def __init__(self, timestamp, username, content):
-        self.timestamp = timestamp
-        self.username = username
-        self.content = content
-class TextPayload:
     @staticmethod
     def Generate(username, content):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -128,6 +129,28 @@ class LitProtocolPacket:
             hmac=hmac,
             payload=payload
         )
+
+    @staticmethod
+    def generateEncryptedTextMessage(message):
+        
+        #Sample values
+        message_type = b'\x00\x00'                         #0x00 = TEXT MESSAGE, 0x01 = IMAGE, 0x02 = GENERIC FILE (subject to change)...
+        message_options_flags = b'\x00\x01'                #0x00 = NO ENCRYPTION, 0x01 = ENCRYPTION...
+        message_message_id = os.urandom(8)                 #For other features maybe...
+        message_iv = os.urandom(16)                        #Dummy IV, for when we implement encryption...
+        message_payload = message                          #Payload (currently as TextPayload)
+        message_hmac = os.urandom(32)                      #Dummy HMAC, for when we implement encryption...
+        
+        #Creating the LitProtocolPacket object...
+        message_packet = LitProtocolPacket(
+            message_type=message_type,
+            options_flags=message_options_flags,
+            message_id=message_message_id,
+            iv=message_iv,                                
+            hmac=message_hmac,                            
+            payload=message_payload                       #Serializing the payload to a byte string for TCP transmission...
+        )
+        return message_packet        
 
     def __repr__(self):
         return (f"LitProtocolPacket(message_type={self.message_type}, options_flags={self.options_flags}, "

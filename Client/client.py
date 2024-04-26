@@ -17,7 +17,7 @@ import emoji
 stop_event = threading.Event()
 
 HOST = '127.0.0.1'
-PORT = 12346
+PORT = 12345
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 def add_message(message):
@@ -43,19 +43,26 @@ def connect():
         chat_ui.disable_username_input()
     else:
         chat_ui.show_error("Invalid username", "Username format should be 3 alphabets, one '-', and two numbers")
-'''
+
 def send_message():
-    #Sample values
+    print("Sending message...")  #Debugging statement...
+
+    # Sample values
     message_type = b'\x00\x00'                                      #0x00 = TEXT MESSAGE, 0x01 = IMAGE, 0x02 = GENERIC FILE (subject to change)...
-    message_options_flags = b'\x00\x00'                             #0x00 = NO ENCRYPTION, 0x01 = ENCRYPTION...
+    message_options_flags = b'\x00\x01'                             #0x00 = NO ENCRYPTION, 0x01 = ENCRYPTION...
     message_message_id = os.urandom(8)                              #For other features maybe...
     message_iv = os.urandom(16)                                     #Dummy IV, for when we implement encryption...  
     key = load_key()                                                #Load up the s3cr3t key...
     print('send_message():' + chat_ui.get_message())                #Debug line before encryption...
-    message_payload = encrypt_message(chat_ui.get_message(), key)   #Fetch message and encrypt it using the s3cr3t key...
-    message_hmac = os.urandom(32)                                   #Dummy HMAC, for when we implement encryption...
     
-    #Creating the LitProtocolPacket object...
+    # Encode message with emoji support
+    message_text = chat_ui.get_message()
+    message_text_with_emoji = emoji.emojize(message_text)
+    
+    message_payload = encrypt_message(message_text_with_emoji, key)   #Fetch message and encrypt it using the s3cr3t key...
+    message_hmac = os.urandom(32)                                     #Dummy HMAC, for when we implement encryption...
+    
+    # Creating the LitProtocolPacket object...
     message_packet = LitProtocolPacket(
         message_type=message_type,
         options_flags=message_options_flags,
@@ -67,49 +74,19 @@ def send_message():
     
     print('send_message():' + str(message_packet.payload)) #Debug line after encryption...
     if message_packet.payload.decode() != '':
-        client.sendall(LitProtocolPacket.encodePacket(message_packet))
-        chat_ui.clear_message_textbox()
-    else:
-        chat_ui.show_error("Empty message", "Message cannot be empty")
-'''
-
-def send_message():
-    print("Sending message...")  # Debugging statement
-    
-    # Sample values
-    message_type = b'\x00\x00'                                      # 0x00 = TEXT MESSAGE, 0x01 = IMAGE, 0x02 = GENERIC FILE (subject to change)...
-    message_options_flags = b'\x00\x00'                             # 0x00 = NO ENCRYPTION, 0x01 = ENCRYPTION...
-    message_message_id = os.urandom(8)                              # For other features maybe...
-    message_iv = os.urandom(16)                                     # Dummy IV, for when we implement encryption...  
-    key = load_key()                                                # Load up the s3cr3t key...
-    print('send_message():' + chat_ui.get_message())                # Debug line before encryption...
-    
-    # Encode message with emoji support
-    message_text = chat_ui.get_message()
-    message_text_with_emoji = emoji.emojize(message_text)
-    
-    message_payload = encrypt_message(message_text_with_emoji, key)   # Fetch message and encrypt it using the s3cr3t key...
-    message_hmac = os.urandom(32)                                   # Dummy HMAC, for when we implement encryption...
-    
-    # Creating the LitProtocolPacket object...
-    message_packet = LitProtocolPacket(
-        message_type=message_type,
-        options_flags=message_options_flags,
-        message_id=message_message_id,
-        iv=message_iv,
-        hmac=message_hmac,
-        payload=message_payload  # Serializing the payload to a byte string for TCP transmission...
-    )        
-    
-    print('send_message():' + str(message_packet.payload)) # Debug line after encryption...
-    if message_packet.payload.decode() != '':
         try:
             client.sendall(LitProtocolPacket.encodePacket(message_packet))
-            print("Message sent successfully.")  # Debugging statement
+            print("Message sent successfully.")  #Debugging statement...
             chat_ui.clear_message_textbox()
+        except OSError as e:
+            if e.errno == 9:  #Bad file descriptor...
+                print("")
+            else:
+                print(f"Unexpected error: {e}")
         except Exception as e:
-            print(f"Error sending message: {e}")  # Debugging statement
+            print(f"Error sending message: {e}")  #Debugging statement...
             chat_ui.show_error("Send Error", f"Error sending message: {e}")
+        
     else:
         chat_ui.show_error("Empty message", "Message cannot be empty")
 
@@ -133,6 +110,13 @@ def listen_for_messages_from_server(client_socket):
                 print("Server closed connection or no data received.")
                 break
             message_packet = LitProtocolPacket.decodePacket(data)
+            if(message_packet.options_flags == b'\x00\x03'):
+                #Signal the listening thread to stop...
+                stop_event.set()
+                time.sleep(0.1) 
+                #Close the client socket...
+                client.close()
+        
             print(message_packet.payload)
             message = decrypt_message(message_packet.payload, key) #Decoding and decrypting message...
             print("from server decrypted:" + message)
