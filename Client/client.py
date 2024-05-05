@@ -102,7 +102,7 @@ def exit_chat():
 
 
 def listen_for_messages_from_server(client_socket):
-    key = load_key()  #Load the key
+    key = load_key()  #Load the key...
     while not stop_event.is_set():
         try:
             data = client_socket.recv(2048)
