@@ -23,7 +23,7 @@ class ChatUI:
         self.root.resizable(True, True)
 
         # Set application icon
-        self.root.iconbitmap("Client/logo1.ico")
+        #self.root.iconphoto("Client/logo1.png")
 
         # TK Structure...
         self.root.grid_rowconfigure(0, weight=1)
@@ -174,6 +174,11 @@ class ChatUI:
 
     def disable_username_input(self):
         self.username_textbox.config(state=tk.DISABLED)
+        self.exit_button.config(state=tk.NORMAL)
+        self.emoji_button.config(state=tk.NORMAL)
+
+    def enable_username_input(self):
+        self.username_textbox.config(state=tk.NORMAL)
         self.exit_button.config(state=tk.NORMAL)
         self.emoji_button.config(state=tk.NORMAL)
 
