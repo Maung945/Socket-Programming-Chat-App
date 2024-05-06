@@ -10,20 +10,21 @@ MEDIUM_GREY = "white"
 BLACK = "black"
 WHITE = "white"
 OCEAN_BLUE = "#464EB8"
-FONT = ("Helvetica", 12, "bold")
-BUTTON_FONT = ("Helvetica", 10, "bold")
-SMALL_FONT = ("Helvetica", 9)
+FONT = ("Georgia", 12, "bold")
+BUTTON_FONT = ("Georgia", 10, "bold")
+SMALL_FONT = ("Georgia", 9)
 
 class ChatUI:
     def __init__(self, connect_callback, send_message_callback, exit_callback):
         # TK Configuration...
         self.root = tk.Tk()
         self.root.geometry("600x600")
-        self.root.title("PSCCA Chat App")
+        self.root.title("Firefly-Flare")
         self.root.resizable(True, True)
+        self.root.bind("<Control-Return>", self.send_shortcut)
 
-        # Set application icon
-        #self.root.iconphoto("Client/logo1.png")
+        #Set application icon
+        self.root.iconbitmap("Client/logo1.ico")
 
         # TK Structure...
         self.root.grid_rowconfigure(0, weight=1)
@@ -161,7 +162,7 @@ class ChatUI:
         self.message_box.config(state=tk.NORMAL)
         self.message_box.insert(tk.END, message_with_emojis + '\n')
         self.message_box.config(state=tk.DISABLED)
-        self.message_box.config(font=("Helvetica", 12))
+        self.message_box.config(font=("Georgia", 12, "bold"))
 
     def get_username(self):
         return self.username_textbox.get()
@@ -199,7 +200,7 @@ class ChatUI:
     # the about message function
     def about_message(self):
         messagebox.showinfo("About",
-                            "PSCCA is a simple chat program. It is intended for educational purposes only."
+                            "Firefly-Flare is a simple chat program. It is intended for educational purposes only."
                             "\n\nCreated by : Daniel Appel, Noah King, Myo Aung, Sungeun Kim, and Tony Alhusari.",
                             icon=tk.messagebox.INFO)
 
