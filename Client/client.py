@@ -1,36 +1,37 @@
-import sys
-import os
 import socket
 import threading
 import re
 import os
 import sys
 import time
+import emoji
+
+#Import functions and classes from your modules
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 from Common.encryption_utils import encrypt_message, decrypt_message, load_key
 from Common.Packet import LitProtocolPacket
 from ui import ChatUI  
-import emoji
 
 stop_event = threading.Event()
 
 HOST = '127.0.0.1'
 PORT = 12345
 
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 def add_message(message):
     global chat_ui
     chat_ui.add_message(message)
 
 def connect():
-    client.settimeout(1.0)
+    global client
     username = chat_ui.get_username()
     username_pattern = re.compile(r'^[a-zA-Z]{3}-\d{2}$')
 
     if username_pattern.match(username):
         try:
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.settimeout(1.0)
             client.connect((HOST, PORT))
             print("Successfully connected to server")
             add_message("Successfully connected to the server")
@@ -47,7 +48,7 @@ def connect():
 def send_message():
     print("Sending message...")  #Debugging statement...
 
-    # Sample values
+    #Sample values
     message_type = b'\x00\x00'                                      #0x00 = TEXT MESSAGE, 0x01 = IMAGE, 0x02 = GENERIC FILE (subject to change)...
     message_options_flags = b'\x00\x01'                             #0x00 = NO ENCRYPTION, 0x01 = ENCRYPTION...
     message_message_id = os.urandom(8)                              #For other features maybe...
@@ -55,14 +56,14 @@ def send_message():
     key = load_key()                                                #Load up the s3cr3t key...
     print('send_message():' + chat_ui.get_message())                #Debug line before encryption...
     
-    # Encode message with emoji support
+    #Encode message with emoji support
     message_text = chat_ui.get_message()
     message_text_with_emoji = emoji.emojize(message_text)
     
     message_payload = encrypt_message(message_text_with_emoji, key)   #Fetch message and encrypt it using the s3cr3t key...
     message_hmac = os.urandom(32)                                     #Dummy HMAC, for when we implement encryption...
     
-    # Creating the LitProtocolPacket object...
+    #Creating the LitProtocolPacket object...
     message_packet = LitProtocolPacket(
         message_type=message_type,
         options_flags=message_options_flags,
@@ -111,9 +112,6 @@ def listen_for_messages_from_server(client_socket):
                 break
             message_packet = LitProtocolPacket.decodePacket(data)
             if(message_packet.options_flags == b'\x00\x03'):
-                #Signal the listening thread to stop...
-                stop_event.set()
-                time.sleep(0.1) 
                 #Close the client socket...
                 client.close()
         
@@ -130,8 +128,8 @@ def listen_for_messages_from_server(client_socket):
                     add_message(f"[SERVER] {message}")
         except socket.timeout:
             continue
-        except OSError as e:
-            if e.errno == 9:  #Bad file descriptor...
+        except (OSError, ConnectionResetError) as e:
+            if e.errno == 9:  # Bad file descriptor...
                 print("Socket has been closed, exiting listener.")
                 break
             else:
