@@ -114,6 +114,7 @@ def listen_for_messages_from_server(client_socket):
             if(message_packet.options_flags == b'\x00\x03'):
                 #Close the client socket...
                 client.close()
+                chat_ui.enable_username_input()
         
             print(message_packet.payload)
             message = decrypt_message(message_packet.payload, key) #Decoding and decrypting message...
