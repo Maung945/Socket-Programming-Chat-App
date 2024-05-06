@@ -8,6 +8,7 @@ sys.path.append(parent_dir)
 from Common.Packet import TextPayload, LitProtocolPacket
 from Common.encryption_utils import encrypt_message, decrypt_message, load_key
 
+
 class ClientHandler():
     def __init__(self, active_clients_list):
         self.active_clients_list = active_clients_list

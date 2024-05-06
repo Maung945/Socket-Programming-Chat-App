@@ -5,7 +5,6 @@ import sys
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
-from Common.encryption_utils import encrypt_message, decrypt_message, load_key
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hmac
 from cryptography.hazmat.primitives import hashes
