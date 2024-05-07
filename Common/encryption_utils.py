@@ -10,18 +10,15 @@ def load_key():
     #key_path = os.path.join(dir_path, 'Common', 'secret.key')
     #return open(key_path, "rb").read()
     #return open("Common/secret.key", "rb").read()
-    pk, sk = Kyber512.keygen()
-    return pk, sk
+    pass
 
 def encrypt_message(message, pk):
     # f = Fernet(key)
     # return f.encrypt(message.encode())
-    c, pk = Kyber512.enc(message)
-    return c, pk
+    pass
 
 
 def decrypt_message(c, sk):
     # f = Fernet(key)
     # return f.decrypt(encrypted_message).decode()
-    _key = Kyber512.dec(c, sk)
-    return _key
+    pass

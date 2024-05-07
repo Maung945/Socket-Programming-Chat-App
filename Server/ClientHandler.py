@@ -41,6 +41,9 @@ class ClientHandler():
         else: #No duplicate found, add user to active client list.
             if username_str:
                 #Creating payload and encrypting it...
+                
+                # key exchange
+
                 payload = encrypt_message(TextPayload.Generate("SERVER",f"{username_str} has joined the server!"), key)
                 #Creating packet...
                 message_packet = LitProtocolPacket.generateEncryptedTextMessage(payload) 
