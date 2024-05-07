@@ -16,8 +16,8 @@ def load_key():
 def encrypt_message(message, pk):
     # f = Fernet(key)
     # return f.encrypt(message.encode())
-    c, key = Kyber512.enc(pk)
-    return c, key
+    c, pk = Kyber512.enc(message)
+    return c, pk
 
 
 def decrypt_message(c, sk):
