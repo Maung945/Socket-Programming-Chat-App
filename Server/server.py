@@ -4,6 +4,7 @@ import signal
 import sys
 import os
 from ClientHandler import ClientHandler
+from Common.keygen import generate_key
 
 common_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Common'))
 sys.path.append(common_path)
@@ -34,7 +35,8 @@ class ChatServer:
         self.active_clients_list = []                                           #Track active clients...
         self.client_handler = ClientHandler(self.active_clients_list)           #Instantiate a ClientHandler object...
         signal.signal(signal.SIGINT, self.signal_handler)                       #Handle SIGINT so we can safely unbind the port with a CRTL+C signal interrupt...
-
+        generate_key()
+        
    
     def cleanup(self):
         """
