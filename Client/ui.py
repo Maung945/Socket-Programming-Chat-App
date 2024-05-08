@@ -24,7 +24,7 @@ class ChatUI:
         self.root.bind("<Control-Return>", self.send_shortcut)
 
         #Set application icon
-        self.root.iconbitmap("Client/logo1.ico")
+        #self.root.iconbitmap("Client/logo1.ico")
 
         # TK Structure...
         self.root.grid_rowconfigure(0, weight=1)
