@@ -1,13 +1,16 @@
+#Python standard library imports...
 import socket
 import threading
 import signal
 import sys
 import os
-from ClientHandler import ClientHandler
 
-common_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Common'))
-sys.path.append(common_path)
-from Common.encryption_utils import encrypt_message, decrypt_message, load_key
+#Import functions and classes from your modules
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+import Common.kyber as kyber
+from ClientHandler import ClientHandler
 
 class ChatServer:
     """
@@ -26,13 +29,15 @@ class ChatServer:
         client_handler (ClientHandler): An instance of the ClientHandler class responsible for handling client connections.
     """
 
-    def __init__(self, host='127.0.0.1', port=12345, listener_limit=5):
+    def __init__(self, host='127.0.0.1', port=12439, listener_limit=5):
         self.host = host                                                        #Host IP address...
         self.port = port                                                        #Host port number...
         self.listener_limit = listener_limit                                    #Max number of clients...
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  #Server socket...
         self.active_clients_list = []                                           #Track active clients...
-        self.client_handler = ClientHandler(self.active_clients_list)           #Instantiate a ClientHandler object...
+        self.public_key, self.secret_key = kyber.Kyber512.keygen()      
+        self.client_handler = ClientHandler(self.active_clients_list, self.public_key, self.secret_key)           #Instantiate a ClientHandler object...
+                #Generating Kyber Public and Secret Key...
         signal.signal(signal.SIGINT, self.signal_handler)                       #Handle SIGINT so we can safely unbind the port with a CRTL+C signal interrupt...
 
    
