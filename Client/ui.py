@@ -143,6 +143,7 @@ class ChatUI:
     def connect(self):
         if self.connect_callback:
             self.connect_callback()
+        self.message_textbox.focus_set()  # Set focus on the message textbox after connecting
 
     def send_message(self):
         if self.send_message_callback:
@@ -207,12 +208,15 @@ class ChatUI:
     # the read more function
     def read_more(self):
         webbrowser.open("https://github.com/Maung945/socket-programming-chat-app")
-
+   
     def on_closing(self):
         # show a info box when closing the window
-        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+        choice = messagebox.askyesnocancel("Quit", "Would you like to save the chat record?")
+        if choice is not None:
+            if choice:  # If user selects Yes or No
+                self.export_chat()
             self.exit_chat()
-    
+
     def show_emoji_popup(self):
         if not self.emoji_popup:
             self.emoji_popup = tk.Toplevel(self.root)
@@ -256,20 +260,7 @@ class ChatUI:
         if self.emoji_popup:
             self.emoji_popup.destroy()
             self.emoji_popup = None
-    '''
-    def export_chat(self):
-        # first check if the file exists
-        try:
-            file_path = filedialog.asksaveasfilename(defaultextension=".txt")
-            if file_path:
-                with open(file_path, 'a') as file:
-                    content = self.message_box.get("1.0", tk.END)
-                    file.write(content)
-        except OSError as oe:
-            messagebox.showerror("Error", f"OS error: {str(oe)}")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to export chat: {str(e)}")
-    '''    
+    
     def export_chat(self):
         try:
             file_path = filedialog.asksaveasfilename(defaultextension=".txt")  # Change the default extension to .txt
