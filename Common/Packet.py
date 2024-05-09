@@ -98,14 +98,6 @@ class LitProtocolPacket:
         
         return bit_string
 
-    def generate_hmac(self, secret_key):
-        """
-        Generate the HMAC of a particular message payload...
-        """
-        h = hmac.HMAC(secret_key, hashes.SHA256(), backend=default_backend())
-        h.update(self.payload)
-        return h.finalize()
-
     @staticmethod
     def encodePacket(packet):
         """
