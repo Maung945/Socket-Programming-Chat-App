@@ -42,13 +42,7 @@ This project is an encrypted messaging application implemented in Python, utiliz
 3. Follow the prompts to enter your username and start sending/receiving messages.
 
 ## Encryption
-To achieve secure end-to-end encrypted conversation, the implementation of a hy-
-brid cryptosystem is needed. A hybrid cryptosystem has two essential components:
-a key encapsulation mechanism(asymmetric cryptography) and a data encapsulation
-scheme(symmetric cryptography). Generally, symmetric encryption costs less comput-
-ing resources for large amounts of data compare to asymmetric encryption. However,
-since both parties need to use the same key for symmetric encryption, asymmetric cryp-
-tography is needed to securely share the one key.
+To achieve secure end-to-end encrypted conversation, the implementation of a hybrid cryptosystem is needed. A hybrid cryptosystem has two essential components: a key encapsulation mechanism(asymmetric cryptography) and a data encapsulation scheme(symmetric cryptography). Generally, symmetric encryption costs less computing resources for large amounts of data compare to asymmetric encryption. However, since both parties need to use the same key for symmetric encryption, asymmetric cryptography is needed to securely share the one key.
 
 ## License
 TBD
