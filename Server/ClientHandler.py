@@ -6,9 +6,9 @@ import os
 common_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Common'))
 sys.path.append(common_path)
 from Common.Packet import TextPayload, LitProtocolPacket
-from Common.encryption_utils import encrypt_message, decrypt_message, load_key
+#from Common.encryption_utils import encrypt_message, decrypt_message, load_key
 import Common.kyber as kyber
-from Crypto.Cipher import AES
+#from Crypto.Cipher import AES
 
 class ClientHandler():
     def __init__(self, active_clients_list, public_key, secret_key):
