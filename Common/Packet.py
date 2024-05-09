@@ -2,12 +2,14 @@ from datetime import datetime
 import time
 import os
 import sys
+import copy
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hmac
 from cryptography.hazmat.primitives import hashes
+from Crypto.Cipher import AES
 
 #subject to change...
 
@@ -18,6 +20,20 @@ class TextPayload:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return f"{timestamp},{username},{content}"
     
+    @staticmethod
+    def reorient_string(input_string):
+        parts = input_string.split(",", 2)  # Split the string by comma
+
+        # Extracting individual parts
+        timestamp = parts[0]
+        username = parts[1]
+        content = parts[2]
+
+        # Reorienting the string
+        reoriented_string = f"[{timestamp}] [{username}] : {content}"
+
+        return reoriented_string
+
     #Per object...
     @classmethod
     def from_string(cls, message_str):
@@ -31,6 +47,9 @@ class TextPayload:
     def __str__(self):
         return f"{self.timestamp},{self.username},{self.content}"
     
+   
+
+
 class LitProtocolPacket:
     """
     A class to represent a Lit Protocol Packet which includes a packet header
@@ -130,14 +149,18 @@ class LitProtocolPacket:
         )
 
     @staticmethod
-    def generateEncryptedTextMessage(message):
-        
-        #Sample values
+    def generateEncryptedTextMessage(shared_secret, message):
+        #Encrypting the message...
+        cipher = AES.new(shared_secret, AES.MODE_CFB)
+        encrypted_message = cipher.encrypt(message)
+        iv = cipher.iv
+
+        #Values
         message_type = b'\x00\x00'                         #0x00 = TEXT MESSAGE, 0x01 = IMAGE, 0x02 = GENERIC FILE (subject to change)...
         message_options_flags = b'\x00\x01'                #0x00 = NO ENCRYPTION, 0x01 = ENCRYPTION...
-        init = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04'#For other features maybe...
-        message_iv = os.urandom(16)                        #Dummy IV, for when we implement encryption...
-        message_payload = message                          #Payload (currently as TextPayload)
+        init = b'\x00\x00\x00\x00\x00\x00\x00\x04'         #Keep track of key-excyhange sequence...
+        message_iv = iv                                    #Initialization Vector...
+        message_payload = encrypted_message                #Payload (currently as TextPayload)
         message_hmac = os.urandom(32)                      #Dummy HMAC, for when we implement encryption...
         
         #Creating the LitProtocolPacket object...
@@ -149,7 +172,7 @@ class LitProtocolPacket:
             hmac=message_hmac,                            
             payload=message_payload                       #Serializing the payload to a byte string for TCP transmission...
         )
-        return message_packet
+        return message_packet    
 
     @staticmethod
     def generateTextMessage(message):
@@ -157,7 +180,7 @@ class LitProtocolPacket:
         #Sample values
         message_type = b'\x00\x00'                         #0x00 = TEXT MESSAGE, 0x01 = IMAGE, 0x02 = GENERIC FILE (subject to change)...
         message_options_flags = b'\x00\x00'                #0x00 = NO ENCRYPTION, 0x01 = ENCRYPTION...
-        init = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'#0x...04 indicates key exchange process is finished...
+        init = b'\x00\x00\x00\x00\x00\x00\x00\x00'         #0x...04 indicates key exchange process is finished...
         message_iv = os.urandom(16)                        #Dummy IV, for when we implement encryption...
         message_payload = message                          #Payload (currently as TextPayload)
         message_hmac = os.urandom(32)                      #Dummy HMAC, for when we implement encryption...
@@ -172,6 +195,17 @@ class LitProtocolPacket:
             payload=message_payload                       #Serializing the payload to a byte string for TCP transmission...
         )
         return message_packet        
+
+    def decryptPayload(self, shared_secret):
+        iv = self.iv
+        d_cipher = AES.new(shared_secret, AES.MODE_CFB, iv=iv)
+        decrypted_payload = d_cipher.decrypt(self.payload).decode('utf-8', 'replace')
+        print(f"INSIDE DECRYPT FUNC: {decrypted_payload}")
+
+        # Create a copy of the object and modify the payload attribute
+        new_instance = copy.deepcopy(self)
+        new_instance.payload = decrypted_payload
+        return new_instance
 
     def __repr__(self):
         return (f"LitProtocolPacket(message_type={self.message_type}, options_flags={self.options_flags}, "

@@ -13,25 +13,22 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 from Common.encryption_utils import encrypt_message, decrypt_message, load_key
-from Common.Packet import LitProtocolPacket
+from Common.Packet import LitProtocolPacket, TextPayload
 import Common.kyber as kyber
 from ui import ChatUI  
 
 stop_event = threading.Event()
 
 HOST = '127.0.0.1'
-PORT = 12348
+PORT = 12439
 GLOBAL_USERNAME_TEST = "TEST"
-global shared_secret
-global client
-client = None
 
 def add_message(message):
     global chat_ui
     chat_ui.add_message(message)
 
 def connect():
-    
+    global username
     username = chat_ui.get_username()
     username_pattern = re.compile(r'^[a-zA-Z]{3}-\d{2}$')
 
@@ -47,11 +44,11 @@ def connect():
             chat_ui.show_error("Unable to connect to server", f"Unable to connect to server {HOST} {PORT}: {e}")
             return
 
-        init_packet = LitProtocolPacket.generateTextMessage("ASD".encode())
+        init_packet = LitProtocolPacket.generateTextMessage(" ".encode())
         client.sendall(LitProtocolPacket.encodePacket(init_packet))
 
        
-        threading.Thread(target=listen_for_messages_from_server, args=(client,username)).start()
+        threading.Thread(target=listen_for_messages_from_server, args=(client, str(username))).start()
         print("Listening thread started...\n")
         chat_ui.disable_username_input()
     else:
@@ -69,17 +66,34 @@ def exit_chat():
     
 
 def send_message():
-    print("send\n")
- 
+    message = TextPayload.Generate(username, chat_ui.get_message())
+    message_packet = LitProtocolPacket.generateEncryptedTextMessage(shared_secret, message.encode())
+    if message_packet.payload:
+        try:
+            client.sendall(LitProtocolPacket.encodePacket(message_packet))
+            print("Message sent successfully.")  #Debugging statement...
+            chat_ui.clear_message_textbox()
+        except OSError as e:
+            if e.errno == 9:  #Bad file descriptor...
+                print("")
+            else:
+                print(f"Unexpected error: {e}")
+        except Exception as e:
+            print(f"Error sending message: {e}")  #Debugging statement...
+            chat_ui.show_error("Send Error", f"Error sending message: {e}")
+    else:
+        chat_ui.show_error("Empty message", "Message cannot be empty")
+
 def listen_for_messages_from_server(client_socket, username):
+    global shared_secret
     EXCHANGE_COMPLETE = False
     while not stop_event.is_set():
         try:
             rx_data = client_socket.recv(2048)
-            rx_packet = LitProtocolPacket.decodePacket(rx_data)   
-            if rx_packet:  
+            rx_packet = LitProtocolPacket.decodePacket(rx_data)  
+            if rx_data:  
                 if EXCHANGE_COMPLETE == False:
-                    if rx_packet.init == b'\x00\x00\x00\x00\x00\x00\x00\x01':        #LISTEN FOR PUBLIC KEY: Check if recieved packet has INIT = 1
+                    if rx_packet.init == b'\x00\x00\x00\x00\x00\x00\x00\x01':                   #LISTEN FOR PUBLIC KEY: Check if recieved packet has INIT = 1
                         public_key = rx_packet.payload
                         ciphertext, shared_secret = kyber.Kyber512.enc(public_key)
                         ciphertext_packet = LitProtocolPacket.generateTextMessage(ciphertext)    
@@ -87,24 +101,27 @@ def listen_for_messages_from_server(client_socket, username):
                         ciphertext_packet.init = b'\x00\x00\x00\x00\x00\x00\x00\x02'              
                         client_socket.sendall(LitProtocolPacket.encodePacket(ciphertext_packet))                                                                   #SEND PK TO CLIENT : Send packet with INIT = 1;
                         print("EXCHANGE SEQUENCE 2: SUCCESS\n")
-                    elif(rx_packet.init == b'\x00\x00\x00\x00\x00\x00\x00\x03'):     #RECIEVE CIPHERTEXT: Check if recieved packet has INIT = 2
-                        done_packet = LitProtocolPacket.generateTextMessage("DONE".encode())     
-                        done_packet.init = b'\x00\x00\x00\x00\x00\x00\x00\x04'       #SEND DONE SIGNAL  : Send packet with INIT = 3;
+                    elif(rx_packet.init == b'\x00\x00\x00\x00\x00\x00\x00\x03'):                #RECIEVE CIPHERTEXT: Check if recieved packet has INIT = 2
+                        done_packet = LitProtocolPacket.generateEncryptedTextMessage(shared_secret, username.encode('utf-8'))     
                         client_socket.sendall(LitProtocolPacket.encodePacket(done_packet))
                         print("EXCHANGE SEQUENCE 4: SUCCESS\n")
                         EXCHANGE_COMPLETE = True
+                elif EXCHANGE_COMPLETE == True: #I know it looks weird but there needs to be two checks, it stops working if theres an else here...
+                    if rx_packet.init == b'\x00\x00\x00\x00\x00\x00\x00\x04':
+                        #Disconnect if duplicate found...
+                        if(rx_packet.options_flags == b'\x00\x03'):
+                            #Close the client socket...
+                            client.close()
+                            rx_packet = rx_packet.decryptPayload(shared_secret)
+                            add_message(TextPayload.reorient_string(rx_packet.payload))
+                            chat_ui.enable_username_input()
+                        else:  
+                            print(shared_secret)
+                            rx_packet = rx_packet.decryptPayload(shared_secret)
+                            print("STUFF: " + rx_packet.payload)
+                            add_message(TextPayload.reorient_string(rx_packet.payload))
+                            print("end")
 
-                        """
-                        if message:
-                            if ',' in message:
-                                print(message)
-                                timestamp, username, content = message.split(',',2) 
-                                add_message(f"[{timestamp}] [{username}] {content}")
-                            else:
-                                add_message(f"[SERVER] {message}")
-                        """
-                        #Process the message as before...
-                        
             else:
                 print("Server closed connection or no data received.")
                 break

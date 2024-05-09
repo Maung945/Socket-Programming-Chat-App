@@ -217,7 +217,7 @@ class ChatUI:
         if not self.emoji_popup:
             self.emoji_popup = tk.Toplevel(self.root)
             self.emoji_popup.title("Emoji List")
-            self.emoji_popup.iconbitmap("Client/logo1.ico")
+            #self.emoji_popup.iconbitmap("Client/logo1.ico")
 
             # Create a canvas for the emoji list
             emoji_canvas = tk.Canvas(self.emoji_popup)
