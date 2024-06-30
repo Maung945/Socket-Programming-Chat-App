@@ -17,7 +17,7 @@ This project is an encrypted messaging application implemented in Python, utiliz
 - Cross-platform compatibility: Works on various operating systems supporting Python.
 
 ## Description and Report
-[a link] Docs/CS-3800 Final Report- Socket Programming Secured Chat App.pdf
+[file.pdf] (Docs/CS-3800 Final Report- Socket Programming Secured Chat App.pdf)
 
 ## Installation
 1. Clone the repository to your local machine.
